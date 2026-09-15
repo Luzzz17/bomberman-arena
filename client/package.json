@@ -9,5 +9,12 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs"
+  "type": "commonjs",
+  "dependencies": {
+    "electron": "^44.3.0",
+    "pixi.js": "^8.20.1"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
 }
