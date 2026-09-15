@@ -22,6 +22,7 @@ jobs:
         working-directory: ./client
         run: |
           npm install
+          chmod +x node_modules/.bin/*
           npm run lint
           npm run test -- --passWithNoTests
 
@@ -29,5 +30,6 @@ jobs:
         working-directory: ./server
         run: |
           npm install
+          chmod +x node_modules/.bin/*
           npm run lint
           npm run test -- --passWithNoTests
