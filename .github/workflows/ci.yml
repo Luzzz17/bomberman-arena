@@ -16,12 +16,20 @@ jobs:
       - name: Installation de Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '20'
+          node-version: '22'
 
-      - name: Installation des dépendances Client
+      - name: Client - Install, Lint & Test
         working-directory: ./client
-        run: npm install
+        run: |
+          npm ci
+          chmod +x node_modules/.bin/*
+          npm run lint
+          npm run test -- --passWithNoTests
 
-      - name: Installation des dépendances Serveur
+      - name: Serveur - Install, Lint & Test
         working-directory: ./server
-        run: npm install
+        run: |
+          npm ci
+          chmod +x node_modules/.bin/*
+          npm run lint
+          npm run test -- --passWithNoTests
