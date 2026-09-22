@@ -21,7 +21,7 @@ jobs:
       - name: Client - Install, Lint & Test
         working-directory: ./client
         run: |
-          npm install
+          npm ci
           chmod +x node_modules/.bin/*
           npm run lint
           npm run test -- --passWithNoTests
@@ -29,7 +29,7 @@ jobs:
       - name: Serveur - Install, Lint & Test
         working-directory: ./server
         run: |
-          npm install
+          npm ci
           chmod +x node_modules/.bin/*
           npm run lint
           npm run test -- --passWithNoTests
