@@ -2,10 +2,16 @@
   "name": "server",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
     "test": "vitest run",
+    "test:watch": "vitest",
     "lint": "npx eslint ."
+  },
+  "engines": {
+    "node": ">=20"
   },
   "keywords": [],
   "author": "",
@@ -18,5 +24,8 @@
     "jiti": "^2.7.0",
     "typescript-eslint": "^8.70.0",
     "vitest": "^5.0.1"
+  },
+  "dependencies": {
+    "socket.io": "^4.8.3"
   }
 }
