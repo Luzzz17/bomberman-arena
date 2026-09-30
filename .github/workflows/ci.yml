@@ -8,28 +8,51 @@ on:
 
 jobs:
   build:
+    name: Validation Client & Serveur
     runs-on: ubuntu-latest
     steps:
       - name: Récupération du code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Installation de Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '22'
 
-      - name: Client - Install, Lint & Test
+      - name: Client - Installation des dépendances
         working-directory: ./client
         run: |
           npm ci
           chmod +x node_modules/.bin/*
+
+      - name: Client - Linting & Typecheck
+        working-directory: ./client
+        run: |
           npm run lint
+          npm run typecheck
+
+      - name: Client - Build (Compilation Electron & Bundling)
+        working-directory: ./client
+        run: |
+          npm run build
+
+      - name: Client - Tests unitaires
+        working-directory: ./client
+        run: |
           npm run test -- --passWithNoTests
 
-      - name: Serveur - Install, Lint & Test
+      - name: Serveur - Installation des dépendances
         working-directory: ./server
         run: |
           npm ci
           chmod +x node_modules/.bin/*
+
+      - name: Serveur - Linting
+        working-directory: ./server
+        run: |
           npm run lint
-          npm run test -- --passWithNoTests
+
+      - name: Serveur - Tests unitaires & intégration
+        working-directory: ./server
+        run: |
+          npm run test -- --passWithNoTests
