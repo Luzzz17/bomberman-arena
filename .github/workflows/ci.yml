@@ -55,4 +55,8 @@ jobs:
       - name: Serveur - Tests unitaires & intégration
         working-directory: ./server
         run: |
-          npm run test -- --passWithNoTests
+          npm run test -- --passWithNoTests
+
+      - name: Serveur - Validation du Build Docker
+        run: docker build ./server
+
