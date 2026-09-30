@@ -1,22 +1,26 @@
 {
   "name": "client",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Client de bureau de Bomberman Arena",
+  "main": "dist/main.cjs",
   "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "start": "npm run build && electron .",
     "test": "vitest run",
-    "lint": "npx eslint ."
+    "lint": "eslint ."
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "electron": "^44.3.0",
-    "pixi.js": "^8.20.1"
+    "electron": "^44.3.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/node": "^22.20.4",
+    "esbuild": "^0.28.2",
     "eslint": "^10.10.0",
     "globals": "^17.12.0",
     "jiti": "^2.7.0",
