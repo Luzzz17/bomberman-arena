@@ -12,6 +12,9 @@ export function startServer(port) {
   io.on('connection', (socket) => {
     console.log(`Client connecté : ${socket.id}`);
 
+    // Provisoire : confirme la connexion au client en attendant le protocole définitif.
+    socket.emit('server:welcome', { id: socket.id });
+
     socket.on('disconnect', () => {
       console.log(`Client déconnecté : ${socket.id}`);
     });
