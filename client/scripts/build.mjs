@@ -16,6 +16,15 @@ await Promise.all([
     target: 'node22',
     external: ['electron'],
   }),
+  build({
+    entryPoints: ['src/renderer.ts'],
+    outfile: join(output, 'renderer.js'),
+    bundle: true,
+    platform: 'browser',
+    format: 'iife',
+    target: 'es2022',
+    sourcemap: true,
+  }),
   copyFile('src/index.html', join(output, 'index.html')),
   copyFile('src/styles.css', join(output, 'styles.css')),
 ]);
