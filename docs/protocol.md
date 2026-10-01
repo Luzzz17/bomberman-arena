@@ -35,25 +35,13 @@ socket.emit(SERVER_EVENTS.WELCOME, { id: socket.id, protocolVersion: PROTOCOL_VE
 
 ## Déroulement
 
-```mermaid
-sequenceDiagram
-    participant C as Client
-    participant S as Serveur
-    C->>S: connexion
-    S-->>C: server:welcome
-    C->>S: client:join { pseudo }
-    S-->>C: server:lobby (à tous)
-    C->>S: client:ready { ready }
-    S-->>C: server:lobby (à tous)
-    Note over S: 2 à 4 joueurs, tous prêts
-    S-->>C: server:start { grid, players }
-    loop Pendant la partie
-        C->>S: client:move / client:bomb
-        S-->>C: server:state (20 fois par seconde)
-    end
-    S-->>C: server:over { winnerId }
-    S-->>C: server:lobby (retour au lobby)
-```
+1. Le client se connecte au serveur, qui lui envoie `server:welcome` avec son identifiant et la version du protocole.
+2. Le client demande à rejoindre le lobby avec `client:join { pseudo }`. Le serveur diffuse alors `server:lobby` à tous les joueurs du lobby.
+3. Le client indique s'il est prêt avec `client:ready { ready }`. Le serveur diffuse le nouvel état du lobby avec `server:lobby`.
+4. Lorsque le lobby compte 2 à 4 joueurs et qu'ils sont tous prêts, le serveur démarre la partie et envoie `server:start { grid, players }`.
+5. Pendant la partie, le client envoie ses intentions avec `client:move` ou `client:bomb`. Le serveur calcule l'état du jeu et le diffuse avec `server:state` 20 fois par seconde.
+6. À la fin de la partie, le serveur envoie `server:over { winnerId }` pour annoncer le vainqueur, ou une égalité si `winnerId` vaut `null`.
+7. Le serveur diffuse ensuite `server:lobby` pour revenir au lobby.
 
 ## Client vers serveur
 
