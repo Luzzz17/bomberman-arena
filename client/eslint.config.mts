@@ -12,7 +12,7 @@ export default defineConfig([
     languageOptions: { globals: globals.browser },
   },
   {
-    files: ['scripts/**/*.{js,mjs,cjs}', 'src/main.ts'],
+    files: ['scripts/**/*.{js,mjs,cjs}', 'src/main.ts', 'tests/**/*.ts'],
     languageOptions: { globals: globals.node },
   },
   tseslint.configs.recommended,
