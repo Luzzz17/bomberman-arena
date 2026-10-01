@@ -144,3 +144,94 @@ body {
     display: none;
   }
 }
+
+.connection-form {
+  width: min(100%, 480px);
+  margin-top: clamp(24px, 4vh, 42px);
+}
+
+.connection-form label {
+  display: block;
+  margin-bottom: 9px;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.connection-form input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
+
+.server-hint {
+  margin: 9px 0 20px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.connection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.connection-actions button {
+  min-height: 48px;
+  padding: 12px 21px;
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  box-shadow: 0 5px 0 var(--ink);
+  background: #ffd65a;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.connection-actions .secondary-button {
+  background: var(--paper);
+}
+
+.connection-actions button:hover:not(:disabled) {
+  background: #ffe58d;
+}
+
+.connection-actions button:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 var(--ink);
+}
+
+.connection-form :focus-visible {
+  outline: 3px solid #24618b;
+  outline-offset: 5px;
+}
+
+.connection-form :disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
+.connection-status {
+  min-height: 3em;
+  margin: 22px 0 0;
+  line-height: 1.5;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.connection-form[data-state='connected'] .connection-status {
+  color: #245421;
+}
+
+.connection-form[data-state='error'] .connection-status {
+  color: #9c3025;
+}
+
+@media (max-height: 700px) {
+  .home h1 { font-size: clamp(42px, 6vw, 82px); }
+  .home-content { padding-top: 30px; }
+}

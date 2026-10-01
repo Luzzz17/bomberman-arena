@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' ws: wss:"
     />
     <title>Bomberman Arena</title>
     <link rel="stylesheet" href="styles.css" />
@@ -21,6 +21,18 @@
         <div class="home-content">
           <div class="home-copy">
             <h1>Bienvenue dans<br />l'arène !</h1>
+            <form id="connection-form" class="connection-form" data-state="disconnected">
+              <label for="server-address">Adresse du serveur</label>
+              <input id="server-address" name="server-address" type="url"
+                value="http://localhost:3000" placeholder="http://localhost:3000"
+                required spellcheck="false" autocomplete="off" aria-describedby="server-hint" />
+              <p id="server-hint" class="server-hint">Sur le même ordinateur, garde l’adresse proposée.</p>
+              <div class="connection-actions">
+                <button id="connect-button" type="submit">Se connecter</button>
+                <button id="disconnect-button" class="secondary-button" type="button" hidden>Se déconnecter</button>
+              </div>
+              <p id="connection-status" class="connection-status" role="status" aria-live="polite" aria-atomic="true">Prêt à se connecter.</p>
+            </form>
           </div>
 
           <div class="mascot-wrap" aria-hidden="true">
