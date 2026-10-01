@@ -1,8 +1,8 @@
 services:
   server:
     build:
-      context: ./server
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: server/Dockerfile
     container_name: bomberman-arena-server
     restart: unless-stopped
     ports:

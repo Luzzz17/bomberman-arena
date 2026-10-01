@@ -58,5 +58,6 @@ jobs:
           npm run test -- --passWithNoTests
 
       - name: Serveur - Validation du Build Docker
-        run: docker build ./server
+        run: docker build -f server/Dockerfile .
+
 
