@@ -1,0 +1,10 @@
+/** Codes d'erreur renvoyés dans server:error. */
+export const ERROR_CODES = Object.freeze({
+  INVALID_PAYLOAD: 'INVALID_PAYLOAD',
+  INVALID_PSEUDO: 'INVALID_PSEUDO',
+  PSEUDO_TAKEN: 'PSEUDO_TAKEN',
+  LOBBY_FULL: 'LOBBY_FULL',
+  GAME_IN_PROGRESS: 'GAME_IN_PROGRESS',
+  NOT_IN_LOBBY: 'NOT_IN_LOBBY',
+  NOT_IN_GAME: 'NOT_IN_GAME',
+});

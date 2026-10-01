@@ -14,7 +14,7 @@ npm run dev
 
 Le serveur écoute sur le port `3000`, modifiable avec la variable d'environnement `PORT`. `npm run dev` relance le serveur à chaque modification, `npm start` le lance sans rechargement.
 
-À chaque connexion, le serveur affiche `Client connecté : <id>` et envoie au client l'événement provisoire `server:welcome` avec `{ id }`.
+À chaque connexion, le serveur affiche `Client connecté : <id>` et envoie au client `server:welcome` avec `{ id, protocolVersion }`. Les messages échangés sont décrits dans [docs/protocol.md](../docs/protocol.md) et définis dans `shared/`.
 
 ## Vérifications
 

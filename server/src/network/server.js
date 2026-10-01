@@ -1,4 +1,5 @@
 import { Server } from 'socket.io';
+import { PROTOCOL_VERSION, SERVER_EVENTS } from '../../../shared/index.js';
 
 /**
  * Démarre le serveur WebSocket et enregistre les gestionnaires de connexion.
@@ -12,8 +13,7 @@ export function startServer(port) {
   io.on('connection', (socket) => {
     console.log(`Client connecté : ${socket.id}`);
 
-    // Provisoire : confirme la connexion au client en attendant le protocole définitif.
-    socket.emit('server:welcome', { id: socket.id });
+    socket.emit(SERVER_EVENTS.WELCOME, { id: socket.id, protocolVersion: PROTOCOL_VERSION });
 
     socket.on('disconnect', () => {
       console.log(`Client déconnecté : ${socket.id}`);
