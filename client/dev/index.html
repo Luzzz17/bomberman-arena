@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'" />
+  <title>Atelier de l’arène · Bomberman Arena</title>
+  <link rel="stylesheet" href="preview.css" />
+  <script src="preview.js" defer></script>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="title"><span class="logo" aria-hidden="true">✹</span><div><p>Bomberman Arena</p><h1>À toi de jouer !</h1></div></div>
+      <span class="preview-badge">Atelier du rendu</span>
+    </header>
+    <div class="players" aria-label="Joueurs de l’aperçu">
+      <span class="player coral"><i aria-hidden="true">1</i>Jay <small>toi</small></span>
+      <span class="player blue"><i aria-hidden="true">2</i>Milo</span>
+      <span class="player gold"><i aria-hidden="true">3</i>Luna</span>
+      <span class="player purple" id="player-4"><i aria-hidden="true">4</i>Nino</span>
+    </div>
+    <div id="arena" aria-label="Zone de jeu"></div>
+    <footer>
+      <div class="controls"><span><kbd>↑ ↓ ← →</kbd> ou <kbd>ZQSD</kbd> / <kbd>WASD</kbd></span><span><kbd>Espace</kbd> Bombe</span><span>Une pression = une intention</span></div>
+      <section class="workbench" aria-label="Scénarios de développement">
+        <div class="scenario-buttons">
+          <button data-frame="0" aria-pressed="true" disabled>Départ</button>
+          <button data-frame="1" aria-pressed="false" disabled>Déplacements</button>
+          <button data-frame="2" aria-pressed="false" disabled>Bombes</button>
+          <button data-frame="3" aria-pressed="false" disabled>Retrait</button>
+          <button id="stop" disabled>Arrêter</button>
+        </div>
+        <p id="status" role="status">Chargement de l’arène…</p>
+        <p id="intent" role="status">Clique dans l’arène pour tester les touches.</p>
+        <p class="note">Aperçu de développement sans serveur. Les boutons chargent des états prédéfinis ; les touches affichent uniquement les intentions.</p>
+      </section>
+    </footer>
+  </main>
+</body>
+</html>
