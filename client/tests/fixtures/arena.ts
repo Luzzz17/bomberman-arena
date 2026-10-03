@@ -1,5 +1,5 @@
 import { CELL, MAP_HEIGHT, MAP_WIDTH } from '../../../shared/index.js';
-import type { ArenaSnapshot } from '../../src/game/arena-events';
+import type { ArenaSnapshot } from '../../src/arena/types';
 
 /** Observations fixes de test, sans calcul de règles. */
 export function arenaSnapshot(): ArenaSnapshot {

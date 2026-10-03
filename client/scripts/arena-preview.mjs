@@ -17,5 +17,5 @@ const build = await context({
 await build.watch();
 const { port } = await build.serve({ servedir: output, host: '127.0.0.1', port: 4173 });
 console.log(`Aperçu de développement : http://127.0.0.1:${port}`);
-console.log('Les touches émettent des intentions ; les boutons chargent des observations fixes.');
+console.log('Les boutons chargent des observations fixes pour vérifier uniquement le rendu.');
 for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => { void build.dispose(); });

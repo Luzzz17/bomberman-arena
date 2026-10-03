@@ -1,13 +1,19 @@
 import { Application } from 'pixi.js';
 // Ce module remplace la génération dynamique de code et respecte script-src 'self'.
 import 'pixi.js/unsafe-eval';
-import type { ArenaPresentation } from '../game/bind-arena';
+import type { ArenaSnapshot } from './types';
 import { createArenaScene } from './scene';
 import type { ArenaScene } from './scene';
 import { loadArenaTextures } from './textures';
 import type { ArenaTextureResources } from './textures';
 
-export interface ArenaView extends ArenaPresentation { readonly element: HTMLCanvasElement }
+export interface ArenaView {
+  readonly element: HTMLCanvasElement;
+  setSnapshot(snapshot: ArenaSnapshot): void;
+  clear(): void;
+  focus(): void;
+  destroy(): void;
+}
 
 /** Initialise le GPU et les images ; l'appelant peut annuler le montage. */
 export async function createArenaView(host: HTMLElement, playerId: string, signal?: AbortSignal): Promise<ArenaView> {
@@ -41,7 +47,7 @@ export async function createArenaView(host: HTMLElement, playerId: string, signa
     app.stage.addChild(scene.root);
     element.tabIndex = 0;
     element.setAttribute('role', 'img');
-    element.setAttribute('aria-label', 'Arène Bomberman. Flèches ou ZQSD pour se déplacer, espace pour poser une bombe.');
+    element.setAttribute('aria-label', 'Arène Bomberman en attente de partie.');
     element.style.display = 'block';
     host.append(element);
     element.addEventListener('pointerdown', focus);
@@ -60,7 +66,7 @@ export async function createArenaView(host: HTMLElement, playerId: string, signa
       if (destroyed) return;
       scene?.setSnapshot(snapshot); app.render();
       const players = snapshot.players.filter((p) => p.alive).map((p) => `${p.pseudo} (${p.x}, ${p.y})`).join(', ');
-      element.setAttribute('aria-label', `Arène Bomberman. Joueurs : ${players || 'aucun'}. ${snapshot.bombs.length} bombe(s). Flèches ou ZQSD, espace.`);
+      element.setAttribute('aria-label', `Arène Bomberman. Joueurs : ${players || 'aucun'}. ${snapshot.bombs.length} bombe(s).`);
     },
     clear() { if (!destroyed) { scene?.clear(); app.render(); element.setAttribute('aria-label', 'Arène en attente de partie.'); } },
   };

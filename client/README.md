@@ -57,103 +57,75 @@ Les tests couvrent le bus, les états du formulaire et la connexion à des serve
 
 `socket.io` et `happy-dom` sont des dépendances de test uniquement ; le renderer embarque `socket.io-client`.
 
-## Arène et contrôles (phase 2, partie rendu)
+## Jalon 2 : deux lots frontend
 
-La branche `feature/frontend-arena-inputs` ajoute une scène PixiJS passive et ses contrôles. Le parcours normal de `npm start` reste l'accueil de connexion : le coordinateur réseau et le lobby doivent encore brancher ces modules.
+Le jalon 1 (Electron, accueil, bus, connexion et tests associés) est conservé. Le lot livré ici couvre uniquement le rendu ; le jalon 2 complet exige encore le raccordement et le moteur backend.
 
-### Inspecter le rendu sans serveur
+| Lot | Responsable | Travail et tests |
+|---|---|---|
+| A : affichage | Jay | Vue PixiJS, grille et obstacles, positions des joueurs, apparition/retrait des bombes depuis des observations, dimensionnement, ressources graphiques et tests du rendu |
+| B : interaction et synchronisation | Binôme frontend | Intentions clavier, envoi via Socket.IO, validation des états reçus, coordination du montage et de la déconnexion, raccordement au bus et à Electron, tests des commandes et du réseau |
+
+Le lot B reste à développer : les anciens modules clavier, liaison au bus et contrat d'événements de gameplay ont été retirés. Aucun calcul de déplacement autorisé, collision, pose autorisée ou durée de vie des bombes ne se fait dans la vue. Ces décisions et les tests unitaires du moteur appartiennent au backend.
+
+### Tester le lot A sans serveur
 
 Depuis `client/` :
 
 ```bash
-npm ci
 npm run arena:preview
 ```
 
-Ouvrir l'adresse locale affichée, normalement `http://127.0.0.1:4173`. `Ctrl+C` arrête le serveur de prévisualisation. Le port n'est exposé que sur la boucle locale.
+Ouvrir l'adresse affichée, normalement `http://127.0.0.1:4173`. Les boutons permettent de vérifier les positions de départ, les positions actualisées, l'apparition de deux bombes et leur retrait. **Vider** efface l'affichage ; sélectionner un état l'affiche à nouveau. Aucune touche de jeu n'est implémentée dans ce lot. `Ctrl+C` arrête l'aperçu.
 
-- Les boutons chargent les états fixes « Départ », « Déplacements », « Bombes » et « Retrait ».
-- Cliquer dans l'arène ou y accéder au clavier pour donner le focus au canvas.
-- Flèches ou positions physiques WASD (ZQSD sur AZERTY) : une intention de déplacement par pression.
-- Espace : une intention de pose de bombe par pression.
-- Les intentions apparaissent sous l'arène. Elles ne modifient pas les positions : seul un nouvel état reçu peut le faire.
-- « Arrêter » vide l'arène et désactive les inputs. Choisir un scénario la relance.
+Les états sont fixes, sans simulation ni connexion réseau. Cet outil vérifie le rendu, sans constituer le mode mock complet prévu au jalon 3 ni démontrer la synchronisation entre deux clients. Le parcours `npm start` reste l'accueil du jalon 1.
 
-Le clavier ignore la répétition native, les raccourcis Ctrl/Alt/Cmd, les formulaires et les événements de composition. Le maintien d'une touche ne produit donc pas de mouvement continu : cette cadence reste à décider avec le backend. Les données de l'aperçu ne calculent ni collisions ni explosions. Ce dispositif ne remplace pas le futur adaptateur mock de session.
+Les fichiers `dev/` sont compilés dans `dist/arena-preview/`, hors du bundle de l'accueil. Relancer l'aperçu après `npm run build` (qui nettoie `dist/`) ou après une modification HTML/CSS. Les modifications TypeScript sont recompilées automatiquement ; recharger le navigateur.
 
-Le fond de carte est une seule image (`src/assets/arena-floor.png`). Les quatre personnages, le mur, la caisse, la bombe et le repère du joueur local sont découpés dans une planche transparente (`src/assets/arena-atlas.png`). Les obstacles sont affichés séparément selon la grille reçue : le fond ne détermine ni les collisions ni les positions.
+### Interface à utiliser par le binôme
 
-Les fichiers de développement sont dans `dev/` et sont compilés sous `dist/arena-preview/`. Ils ne sont pas inclus dans le bundle de l'accueil. Relancer l'aperçu après `npm run build`, qui nettoie `dist/`. Les changements TypeScript sont recompilés automatiquement ; recharger le navigateur pour les voir. Relancer la commande après modification du HTML/CSS.
+- `src/arena/types.ts` : `ArenaSnapshot`, limité à `grid`, `players`, `bombs` de `StatePayload` dans `shared/index.js`.
+- `src/arena/view.ts` : `createArenaView(host, playerId, signal?)` et `ArenaView`.
+- `src/arena/scene.ts` : objets graphiques conservés par ID et rendu des observations.
+- `src/arena/textures.ts` et `artwork.ts` : chargement, découpage et sprites.
 
-### Modules à raccorder par le binôme
-
-| Module | Responsabilité |
-|---|---|
-| `src/game/arena-events.ts` | Contrat interne `ArenaEvents`, types de données importés depuis `shared/index.js` |
-| `src/arena/artwork.ts` | Sprites cartoon, pseudonymes et repère du joueur local |
-| `src/arena/textures.ts` | Chargement des deux PNG locaux et découpage de la planche de huit sprites |
-| `src/arena/scene.ts` | Grille et objets PixiJS conservés par ID, dimensionnement et destruction |
-| `src/arena/view.ts` | Initialisation WebGL asynchrone, canvas, ResizeObserver et rendu à la demande |
-| `src/inputs/keyboard.ts` | Clavier focalisé, activation explicite et intentions uniquement |
-| `src/game/bind-arena.ts` | Liaison bus/rendu, filtrage des ticks anciens et activation pour le joueur local vivant |
-
-Contrat **interne au frontend**, à intégrer au coordinateur existant :
-
-| Événement interne | Données | Émetteur |
-|---|---|---|
-| `arena:started` | `StartPayload` | Coordinateur, après un `server:start` validé |
-| `arena:updated` | `StatePayload` | Coordinateur, après un `server:state` validé |
-| `arena:stopped` | `undefined` | Coordinateur, à la déconnexion ou à la sortie de partie |
-| `controls:enabled` | `boolean` | Coordinateur, pour suspendre/reprendre les inputs |
-| `player:move-requested` | `MovePayload` | Clavier, à transmettre via `CLIENT_EVENTS.MOVE` |
-| `player:bomb-requested` | `BombPayload` | Clavier, à transmettre via `CLIENT_EVENTS.BOMB` |
-
-Ces noms n'ajoutent aucun événement réseau. La validation des messages et leur traduction restent dans le transport et le coordinateur. Composer les types avec `SessionEvents & ArenaEvents` pour utiliser un seul bus.
-
-Exemple d'assemblage, à exécuter avec un conteneur dimensionné et l'identifiant obtenu lors de la bienvenue :
+`createArenaView` est asynchrone. Le conteneur doit avoir une largeur et une hauteur ; l'identité vient de la bienvenue serveur. Le rendu attend des observations déjà validées par le transport et le coordinateur.
 
 ```ts
-import type { EventBus } from './core/event-bus';
-import type { SessionEvents } from './session/types';
-import type { ArenaEvents } from './game/arena-events';
 import { createArenaView } from './arena/view';
-import { createKeyboardControls } from './inputs/keyboard';
-import { bindArena } from './game/bind-arena';
+import type { StartPayload, StatePayload } from '../../shared/index.js';
 
-export async function mountGame(
-  host: HTMLElement,
-  playerId: string,
-  bus: EventBus<SessionEvents & ArenaEvents>,
-  signal: AbortSignal,
-): Promise<() => void> {
-  const view = await createArenaView(host, playerId, signal);
-  const controls = createKeyboardControls(view.element, bus);
-  const dispose = bindArena(bus, view, controls, playerId);
-  signal.addEventListener('abort', dispose, { once: true });
-  return () => {
-    signal.removeEventListener('abort', dispose);
-    dispose();
-  };
+const view = await createArenaView(host, playerId, signal);
+
+// Après validation du démarrage par le coordinateur :
+function showStart(start: StartPayload): void {
+  view.setSnapshot({ grid: start.grid, players: start.players, bombs: [] });
+  view.focus();
 }
+
+// Après validation de chaque état par le coordinateur :
+function showState(state: StatePayload): void {
+  view.setSnapshot(state);
+}
+
+// À la sortie de partie ou à la déconnexion :
+view.destroy();
 ```
 
-Attendre la résolution du montage **avant** de publier `arena:started`, puis transmettre les états suivants. Si le démarrage serveur arrive pendant l'initialisation, le coordinateur doit conserver le démarrage et le dernier état valide puis les publier dans cet ordre une fois le montage terminé. Ne pas perdre ces messages pendant l'attente du GPU.
+Cet extrait décrit l'API, pas un raccordement livré. Le binôme doit organiser les abonnements au bus : conserver le démarrage et le dernier état reçu pendant le montage, les présenter dans cet ordre, filtrer les ticks anciens et les états hors partie, puis nettoyer les abonnements et les contrôles à l'arrêt. Une annulation via `signal` détruit également le montage. Une nouvelle identité nécessite une nouvelle vue.
 
-À chaque nouvelle partie, le compteur de tick local est réinitialisé. Les mises à jour reçues avant le démarrage, après l'arrêt, ou avec un tick inférieur ou égal au dernier sont ignorées. Un nouveau démarrage réautorise les contrôles ; le coordinateur peut les suspendre ensuite. Les inputs restent inactifs si le joueur local est absent ou mort. Pour une nouvelle identité après reconnexion, détruire l'ancien montage et en créer un nouveau.
+La vue propose `element` (canvas focalisable), `setSnapshot`, `clear`, `focus` et `destroy`. `clear` conserve les textures pour réutiliser la vue ; `destroy` libère le canvas, les images et le GPU. Elle ne décide pas quand activer les inputs et ne filtre pas les ticks.
 
-Le rendu conserve la position serveur exacte, sans prédiction ni interpolation. Il ne calcule pas la durée de vie des bombes : elles disparaissent quand l'observation les retire. Explosions, bonus et fin de partie sont hors de cette tranche. Les dimensions visuelles viennent de la grille reçue ; les codes des cases viennent de `shared`.
+Les intentions de déplacement et de bombe doivent utiliser `CLIENT_EVENTS.MOVE` et `CLIENT_EVENTS.BOMB` et les types partagés. Les observations de partie utilisent `SERVER_EVENTS.START` et `SERVER_EVENTS.STATE`. Les noms d'événements internes au bus sont à définir par le binôme ; aucun nouveau protocole réseau n'est introduit ici. La cadence de maintien d'une touche doit être décidée avec le backend.
 
-Chaque montage charge ses deux images avec des éléments `img`, compatibles avec `img-src 'self'` et les URL `file:` d’Electron. Il possède ses textures et leurs deux sources GPU : retirer un objet conserve ces ressources, détruire la vue les libère. Un échec ou une annulation pendant le montage nettoie aussi le canvas et le GPU.
+Si l'entrée en partie exige une intention de préparation, utiliser le contrat partagé existant. Le lobby soigné, les menus finaux, explosions, bonus et résultat relèvent du jalon 3.
 
-La scène utilise le module officiel `pixi.js/unsafe-eval`, malgré son nom, pour **remplacer** la génération dynamique de code et fonctionner avec `script-src 'self'`. Aucun `unsafe-eval` n'est ajouté à la CSP. Le canvas reçoit un résumé accessible des joueurs et bombes ; ce résumé n'est pas un mode de jeu non visuel complet.
+### Rendu et validation
 
-### Tests de cette partie
+Le fond est une seule image (`src/assets/arena-floor.png`). Les quatre personnages, le mur, la caisse, la bombe et le repère local proviennent de `arena-atlas.png`. Les obstacles sont indépendants du fond et reflètent la grille reçue. Les positions sont affichées exactement, sans prédiction ni interpolation.
 
-- `keyboard.test.ts` : intentions, répétitions, focus, formulaires et destruction.
-- `arena-scene.test.ts` : vrais objets PixiJS sans GPU, coordonnées, réutilisation, retrait et redimensionnement.
-- `bind-arena.test.ts` : démarrage, ticks, joueur mort/absent, suspension, arrêt et désabonnement.
-- `arena-view.test.ts` : montage DOM, resize, chargement et annulation asynchrone avec les frontières image/GPU substituées.
-- `arena-textures.test.ts` : découpage de la planche, fond unique, affichage des sprites et conservation des textures pendant le retrait des objets.
-- `arena-texture-loading.test.ts` : URLs locales, sources indépendantes par montage, erreur image et annulation.
+Chaque montage possède ses images et textures. Leur chargement respecte les URL locales `file:` et la CSP existante. Le module officiel `pixi.js/unsafe-eval` remplace la génération dynamique de code ; aucun `unsafe-eval` n'est ajouté à la CSP.
 
-Compléter les tests automatisés par l'aperçu sur un vrai contexte WebGL : ils ne valident pas les pixels ni les pilotes graphiques. La synchronisation entre deux clients réels reste à tester avec la partie réseau du binôme et le backend.
+Les quatre suites de rendu couvrent les coordonnées, la réutilisation et le retrait des objets, le redimensionnement, le découpage des images, le cycle de vie des sources, les erreurs et l'annulation du montage. Les tests du jalon 1 restent présents. Les tests avec la frontière GPU substituée doivent être complétés par l'aperçu sur WebGL réel.
+
+Après développement du lot B et du backend, tester deux clients réels : une intention de A doit produire un état serveur visible chez A et B ; une bombe autorisée doit apparaître chez les deux. Cette validation reste à effectuer.

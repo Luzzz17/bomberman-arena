@@ -1,7 +1,7 @@
 import { Container, Graphics, Sprite } from 'pixi.js';
 import { CELL } from '../../../shared/index.js';
 import type { ArenaTextures } from './textures';
-import type { ArenaSnapshot } from '../game/arena-events';
+import type { ArenaSnapshot } from './types';
 import { createBomb, createPlayer, createTile, TILE_SIZE } from './artwork';
 import type { PlayerArtwork } from './artwork';
 
