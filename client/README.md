@@ -72,20 +72,28 @@ Le lot B reste à développer : les anciens modules clavier, liaison au bus et c
 
 Répartition du travail frontend restant, préparée le 13 octobre 2026 depuis `8626dd6`. Le rendu de Jay est déjà commité ; les deux parties ci-dessous ne sont pas implémentées. Elles sont à réaliser dans cet ordre, avec leurs tests, en conservant le parcours de connexion existant.
 
-#### Partie 1 : commandes et envoi des intentions
+#### Organisation parallèle retenue
 
-Fichiers concernés : créer `src/inputs/keyboard.ts` et un contrat interne de gameplay dans `src/game/` ; étendre `src/network/socket-client.ts`. Ajouter `tests/keyboard.test.ts` et `tests/game-transport.test.ts`. Le nom des événements internes au bus est un choix frontend à formaliser, pas un nouveau contrat serveur.
+Après intégration du rendu dans `develop`, Jay et son collègue créent chacun leur branche depuis `develop`. Jay prend `feature/frontend-gameplay-inputs` pour le clavier ; son collègue prend `feature/frontend-gameplay-sync` pour le transport et la coordination. Les titres ci-dessous décrivent les deux responsabilités ; elles peuvent avancer en parallèle.
+
+Avant de coder, convenir du contrat des callbacks : le clavier appelle `onMove(direction)` et `onBomb()`, fournis par le coordinateur. Ces noms sont une proposition interne, pas des messages serveur. Jay teste avec des callbacks substitués ; son collègue teste avec des intentions substituées. Le collègue est seul responsable des modifications de `src/network/socket-client.ts`, de `src/renderer.ts` et de la coordination du jeu. L'intégration finale rassemble les deux modules, puis vérifie deux clients réels avec le backend.
+
+#### Partie 1 : Jay, commandes et production des intentions
+
+Fichiers concernés : créer `src/inputs/keyboard.ts` et `tests/keyboard.test.ts`. Le contrat des callbacks et du cycle de vie du clavier est à convenir avec le collègue avant le développement ; aucun nouveau protocole serveur n'est introduit.
 
 - [ ] Produire des intentions de déplacement avec les flèches et WASD/ZQSD selon le clavier, et une intention de bombe avec espace. Décider avec le backend la cadence lors du maintien d'une touche.
 - [ ] Activer les commandes uniquement pendant une partie et lorsque le canvas possède le focus. Ignorer les champs de saisie, empêcher le défilement uniquement pour les touches prises en charge, réinitialiser les touches au changement de focus et retirer les écouteurs à la destruction.
-- [ ] Étendre le transport pour émettre `CLIENT_EVENTS.MOVE` avec `{ direction }` et `CLIENT_EVENTS.BOMB` avec `{}` sur la connexion existante. Bloquer l'envoi hors partie ou après déconnexion. Ne pas ouvrir une seconde connexion pour le jeu.
-- [ ] Tester les touches, la répétition selon la cadence retenue, le focus, la désactivation et le nettoyage. Avec un serveur Socket.IO de test sur port éphémère, vérifier les noms et contenus envoyés ainsi que l'absence d'envoi après arrêt.
+- [ ] Transmettre les intentions aux callbacks convenus avec le collègue. Exposer l'activation, la désactivation et la destruction des contrôles pour que son coordinateur gère leur cycle de vie.
+- [ ] Tester les touches, la répétition selon la cadence retenue, le focus, la désactivation et le nettoyage avec des callbacks substitués.
 
-Critère d'acceptation : les intentions arrivent au serveur de test sans modifier localement les positions ni créer une bombe dans PixiJS. Cette partie peut être vérifiée avant que le moteur backend soit disponible.
+Critère d'acceptation : les callbacks reçoivent les bonnes intentions sans modifier localement les positions ni créer une bombe dans PixiJS. Cette partie peut être vérifiée avant que le transport de jeu et le moteur backend soient disponibles.
 
-#### Partie 2 : réception des états et raccordement de l'arène
+#### Partie 2 : collègue, transport et synchronisation de l'arène
 
 Fichiers concernés : compléter `src/network/socket-client.ts`, ajouter la coordination du jeu dans `src/game/`, puis raccorder les modules dans `src/renderer.ts` en utilisant le bus et la session existants. Ajouter `tests/game-session.test.ts`, compléter `tests/game-transport.test.ts` et documenter la vérification à deux clients.
+
+- [ ] Créer `tests/game-transport.test.ts` et étendre le transport pour émettre `CLIENT_EVENTS.MOVE` avec `{ direction }` et `CLIENT_EVENTS.BOMB` avec `{}` sur la connexion existante. Bloquer l'envoi hors partie ou après déconnexion. Avec un serveur Socket.IO de test sur port éphémère, vérifier les noms et contenus envoyés ainsi que l'absence d'envoi après arrêt. Ne pas ouvrir une seconde connexion pour le jeu.
 
 - [ ] Prévoir l'accès minimal à une partie avec le pseudo et l'état prêt via `CLIENT_EVENTS.JOIN` et `CLIENT_EVENTS.READY`, selon le contrat partagé. Préserver l'accueil ; le lobby final soigné reste au jalon 3.
 - [ ] Recevoir et valider `SERVER_EVENTS.START` et `SERVER_EVENTS.STATE` selon les types partagés : grille rectangulaire avec cases reconnues, joueurs et bombes avec identités uniques et coordonnées entières dans la grille, champs requis du protocole et tick entier valide. Rejeter les messages malformés avant de les transmettre au rendu.
