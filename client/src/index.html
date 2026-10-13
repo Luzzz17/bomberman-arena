@@ -33,6 +33,16 @@
               </div>
               <p id="connection-status" class="connection-status" role="status" aria-live="polite" aria-atomic="true">Prêt à se connecter.</p>
             </form>
+
+            <div id="lobby-section" class="lobby-section" hidden>
+              <h2 class="lobby-title">Rejoindre la partie</h2>
+              <div class="lobby-inputs">
+                <input id="lobby-pseudo" type="text" placeholder="Ton pseudo" maxlength="16" value="Joueur" spellcheck="false" autocomplete="off" />
+                <button id="lobby-join-button" type="button">Rejoindre</button>
+                <button id="lobby-ready-button" class="secondary-button" type="button" disabled>Je suis prêt</button>
+              </div>
+              <p id="lobby-status" class="lobby-status" role="status" aria-live="polite"></p>
+            </div>
           </div>
 
           <div class="mascot-wrap" aria-hidden="true">
@@ -57,6 +67,14 @@
             </svg>
           </div>
         </div>
+      </section>
+
+      <section id="game-arena-section" class="game-arena-section" hidden>
+        <div class="arena-topbar">
+          <span id="game-info" class="game-info">Partie en cours</span>
+          <button id="game-leave-button" class="secondary-button" type="button">Quitter la partie</button>
+        </div>
+        <div id="arena-host" class="arena-host"></div>
       </section>
     </main>
   </body>

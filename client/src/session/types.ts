@@ -1,4 +1,5 @@
-/** Dernière observation de connexion, sans simulation du jeu. */
+import type { Direction } from '../../../shared/index.js';
+
 export type ConnectionState =
   | { readonly status: 'disconnected' }
   | { readonly status: 'connecting'; readonly address: string }
@@ -11,7 +12,25 @@ export interface SessionEvents {
   'session:changed': ConnectionState;
 }
 
-/** Contrat commun aux transports réels et aux futurs scénarios mock. */
 export interface ConnectionTransport {
   connect(address: string, observe: (state: ConnectionState) => void): () => void;
+}
+
+export interface GameTransportObserver {
+  onLobby?: (payload: unknown) => void;
+  onStart?: (payload: unknown) => void;
+  onState?: (payload: unknown) => void;
+  onOver?: (payload: unknown) => void;
+  onError?: (payload: unknown) => void;
+}
+
+export interface GameTransport extends ConnectionTransport {
+  setObserver(observer: GameTransportObserver | null): void;
+  sendJoin(pseudo: string): boolean;
+  sendReady(ready: boolean): boolean;
+  sendMove(direction: Direction): boolean;
+  sendBomb(): boolean;
+  setGameActive(active: boolean): void;
+  isGameActive(): boolean;
+  isConnected(): boolean;
 }
