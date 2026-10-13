@@ -68,6 +68,40 @@ Le jalon 1 (Electron, accueil, bus, connexion et tests associés) est conservé.
 
 Le lot B reste à développer : les anciens modules clavier, liaison au bus et contrat d'événements de gameplay ont été retirés. Aucun calcul de déplacement autorisé, collision, pose autorisée ou durée de vie des bombes ne se fait dans la vue. Ces décisions et les tests unitaires du moteur appartiennent au backend.
 
+### Passage de relais : deux parties pour le binôme
+
+Répartition du travail frontend restant, préparée le 13 octobre 2026 depuis `8626dd6`. Le rendu de Jay est déjà commité ; les deux parties ci-dessous ne sont pas implémentées. Elles sont à réaliser dans cet ordre, avec leurs tests, en conservant le parcours de connexion existant.
+
+#### Partie 1 : commandes et envoi des intentions
+
+Fichiers concernés : créer `src/inputs/keyboard.ts` et un contrat interne de gameplay dans `src/game/` ; étendre `src/network/socket-client.ts`. Ajouter `tests/keyboard.test.ts` et `tests/game-transport.test.ts`. Le nom des événements internes au bus est un choix frontend à formaliser, pas un nouveau contrat serveur.
+
+- [ ] Produire des intentions de déplacement avec les flèches et WASD/ZQSD selon le clavier, et une intention de bombe avec espace. Décider avec le backend la cadence lors du maintien d'une touche.
+- [ ] Activer les commandes uniquement pendant une partie et lorsque le canvas possède le focus. Ignorer les champs de saisie, empêcher le défilement uniquement pour les touches prises en charge, réinitialiser les touches au changement de focus et retirer les écouteurs à la destruction.
+- [ ] Étendre le transport pour émettre `CLIENT_EVENTS.MOVE` avec `{ direction }` et `CLIENT_EVENTS.BOMB` avec `{}` sur la connexion existante. Bloquer l'envoi hors partie ou après déconnexion. Ne pas ouvrir une seconde connexion pour le jeu.
+- [ ] Tester les touches, la répétition selon la cadence retenue, le focus, la désactivation et le nettoyage. Avec un serveur Socket.IO de test sur port éphémère, vérifier les noms et contenus envoyés ainsi que l'absence d'envoi après arrêt.
+
+Critère d'acceptation : les intentions arrivent au serveur de test sans modifier localement les positions ni créer une bombe dans PixiJS. Cette partie peut être vérifiée avant que le moteur backend soit disponible.
+
+#### Partie 2 : réception des états et raccordement de l'arène
+
+Fichiers concernés : compléter `src/network/socket-client.ts`, ajouter la coordination du jeu dans `src/game/`, puis raccorder les modules dans `src/renderer.ts` en utilisant le bus et la session existants. Ajouter `tests/game-session.test.ts`, compléter `tests/game-transport.test.ts` et documenter la vérification à deux clients.
+
+- [ ] Prévoir l'accès minimal à une partie avec le pseudo et l'état prêt via `CLIENT_EVENTS.JOIN` et `CLIENT_EVENTS.READY`, selon le contrat partagé. Préserver l'accueil ; le lobby final soigné reste au jalon 3.
+- [ ] Recevoir et valider `SERVER_EVENTS.START` et `SERVER_EVENTS.STATE` selon les types partagés : grille rectangulaire avec cases reconnues, joueurs et bombes avec identités uniques et coordonnées entières dans la grille, champs requis du protocole et tick entier valide. Rejeter les messages malformés avant de les transmettre au rendu.
+- [ ] Monter `createArenaView(host, playerId, signal)` au démarrage, transmettre la grille et les joueurs de départ avec une liste de bombes vide, puis appeler `setSnapshot` à chaque état accepté. Activer les commandes de la partie 1 une fois le montage terminé.
+- [ ] Conserver le démarrage et le dernier état reçu pendant le montage asynchrone ; ignorer les ticks anciens ou dupliqués et les états hors partie. Annuler les montages devenus obsolètes et nettoyer vue, commandes et abonnements à la déconnexion ou à la sortie. Une nouvelle identité doit obtenir une nouvelle vue.
+- [ ] Tester les états invalides, leur ordre, le montage différé, la déconnexion pendant le montage et la reconnexion. Conserver les tests existants du jalon 1 et du rendu.
+- [ ] Avec le backend disponible, ouvrir deux clients réels : faire bouger A et vérifier la même position chez A et B ; poser une bombe et vérifier son apparition chez les deux. Vérifier aussi qu'un déplacement refusé par le serveur ne déplace pas le personnage côté client.
+
+Critère d'acceptation : déplacements et bombes sont visibles sur deux clients depuis les états du serveur. Les serveurs de test valident le raccordement ; ils ne remplacent pas cette vérification avec le backend réel.
+
+#### Dépendances et validation de la phase 2
+
+Le pôle backend doit livrer l'accès à une partie, la grille initiale, les déplacements autorisés et collisions, la pose de bombes, la diffusion des états et les tests unitaires du moteur. Le serveur présent sur cette branche ne gère actuellement que la bienvenue et les connexions. Ces travaux backend ne sont pas attribués au binôme frontend par cette répartition.
+
+Pour chacune des deux parties, lancer depuis `client/` : `npm run typecheck`, `npm run lint`, `npm test` et `npm run build`. Faire des commits distincts au format `type: description`. La phase 2 complète exige aussi les tests du moteur passants et la démonstration à deux clients. Explosions, bonus, résultats et finition du lobby restent au jalon 3.
+
 ### Tester le lot A sans serveur
 
 Depuis `client/` :
