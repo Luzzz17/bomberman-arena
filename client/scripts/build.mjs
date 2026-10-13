@@ -6,7 +6,9 @@ const output = join(process.cwd(), 'dist');
 await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
 
+await mkdir(join(output, 'assets'), { recursive: true });
 await Promise.all([
+  ...['arena-floor.png', 'arena-atlas.png'].map((name) => copyFile(join('src', 'assets', name), join(output, 'assets', name))),
   build({
     entryPoints: ['src/main.ts'],
     outfile: join(output, 'main.cjs'),
