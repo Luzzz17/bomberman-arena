@@ -64,28 +64,47 @@ Le jalon 1 (Electron, accueil, bus, connexion et tests associés) est conservé.
 | Lot | Responsable | Travail et tests |
 |---|---|---|
 | A : affichage | Jay | Vue PixiJS, grille et obstacles, positions des joueurs, apparition/retrait des bombes depuis des observations, dimensionnement, ressources graphiques et tests du rendu |
-| B : interaction et synchronisation | Binôme frontend | Intentions clavier, envoi via Socket.IO, validation des états reçus, coordination du montage et de la déconnexion, raccordement au bus et à Electron, tests des commandes et du réseau |
+| B : interaction et synchronisation | Jay (clavier), binôme frontend (raccordement) | Intentions clavier et leurs tests ; envoi via Socket.IO, validation des états reçus, coordination du montage et de la déconnexion, raccordement au bus et à Electron, tests du réseau |
 
-Le lot B reste à développer : les anciens modules clavier, liaison au bus et contrat d'événements de gameplay ont été retirés. Aucun calcul de déplacement autorisé, collision, pose autorisée ou durée de vie des bombes ne se fait dans la vue. Ces décisions et les tests unitaires du moteur appartiennent au backend.
+Le clavier autonome du lot B est disponible ; son raccordement, le transport et la coordination restent à développer. Les anciens modules de liaison au bus et le contrat d'événements de gameplay restent absents. Aucun calcul de déplacement autorisé, collision, pose autorisée ou durée de vie des bombes ne se fait dans la vue ni dans le clavier. Ces décisions et les tests unitaires du moteur appartiennent au backend.
 
 ### Passage de relais : deux parties pour le binôme
 
-Répartition du travail frontend restant, préparée le 13 octobre 2026 depuis `8626dd6`. Le rendu de Jay est déjà commité ; les deux parties ci-dessous ne sont pas implémentées. Elles sont à réaliser dans cet ordre, avec leurs tests, en conservant le parcours de connexion existant.
+Répartition du travail frontend, préparée le 13 octobre 2026 depuis `8626dd6`. Le rendu de Jay est intégré dans `develop`. Le module clavier de la partie 1 est développé sur `feature/frontend-gameplay-inputs` ; la partie 2 et le raccordement applicatif restent à réaliser, en conservant le parcours de connexion existant.
 
 #### Organisation parallèle retenue
 
 Après intégration du rendu dans `develop`, Jay et son collègue créent chacun leur branche depuis `develop`. Jay prend `feature/frontend-gameplay-inputs` pour le clavier ; son collègue prend `feature/frontend-gameplay-sync` pour le transport et la coordination. Les titres ci-dessous décrivent les deux responsabilités ; elles peuvent avancer en parallèle.
 
-Avant de coder, convenir du contrat des callbacks : le clavier appelle `onMove(direction)` et `onBomb()`, fournis par le coordinateur. Ces noms sont une proposition interne, pas des messages serveur. Jay teste avec des callbacks substitués ; son collègue teste avec des intentions substituées. Le collègue est seul responsable des modifications de `src/network/socket-client.ts`, de `src/renderer.ts` et de la coordination du jeu. L'intégration finale rassemble les deux modules, puis vérifie deux clients réels avec le backend.
+Le contrat de livraison du clavier est `createKeyboardControls(canvas, { onMove, onBomb })`, détaillé ci-dessous. Ces callbacks sont internes, pas des messages serveur ; le coordinateur du collègue doit les fournir. Jay teste avec des callbacks substitués ; son collègue teste avec des intentions substituées. Le collègue est seul responsable des modifications de `src/network/socket-client.ts`, de `src/renderer.ts` et de la coordination du jeu. L'intégration finale rassemble les deux modules, puis vérifie deux clients réels avec le backend.
 
 #### Partie 1 : Jay, commandes et production des intentions
 
-Fichiers concernés : créer `src/inputs/keyboard.ts` et `tests/keyboard.test.ts`. Le contrat des callbacks et du cycle de vie du clavier est à convenir avec le collègue avant le développement ; aucun nouveau protocole serveur n'est introduit.
+Fichiers livrés : `src/inputs/keyboard.ts` et `tests/keyboard.test.ts`. Aucun nouveau protocole serveur n'est introduit.
 
-- [ ] Produire des intentions de déplacement avec les flèches et WASD/ZQSD selon le clavier, et une intention de bombe avec espace. Décider avec le backend la cadence lors du maintien d'une touche.
-- [ ] Activer les commandes uniquement pendant une partie et lorsque le canvas possède le focus. Ignorer les champs de saisie, empêcher le défilement uniquement pour les touches prises en charge, réinitialiser les touches au changement de focus et retirer les écouteurs à la destruction.
-- [ ] Transmettre les intentions aux callbacks convenus avec le collègue. Exposer l'activation, la désactivation et la destruction des contrôles pour que son coordinateur gère leur cycle de vie.
-- [ ] Tester les touches, la répétition selon la cadence retenue, le focus, la désactivation et le nettoyage avec des callbacks substitués.
+- [x] Produire des intentions avec les flèches, les positions physiques WASD (ZQSD sur AZERTY) et espace. Une intention par appui physique ; répétition native et doublons ignorés jusqu'au relâchement. Aucun déplacement continu ni minuterie.
+- [x] Limiter les commandes au canvas exactement focalisé et à un document visible, lorsque les contrôles sont activés. Ignorer les champs éditables, les compositions de texte et les raccourcis Ctrl/Alt/Meta ; empêcher le défilement uniquement pour les touches prises en charge.
+- [x] Transmettre les intentions à `onMove(direction)` et `onBomb()`. Exposer `setEnabled(boolean)` et `destroy()` ; réinitialiser les appuis à la désactivation, à la perte de focus et au changement de visibilité, puis retirer tous les écouteurs à la destruction.
+- [x] Tester les touches, la répétition, le focus, la désactivation et le nettoyage avec des callbacks substitués.
+
+Le module démarre désactivé. `onMove` reçoit une `Direction` de `shared/index.js` (`up`, `down`, `left`, `right`) ; `onBomb` ne reçoit aucun argument. Plusieurs touches distinctes produisent leurs intentions dans l'ordre des appuis. Répéter `setEnabled(true)` conserve les appuis en cours. `destroy()` est idempotent et interdit toute réactivation.
+
+Exemple de raccordement à réaliser par le collègue dans son coordinateur, après montage de la vue et démarrage de la partie :
+
+```ts
+import { createKeyboardControls } from './inputs/keyboard';
+
+// sendMove et sendBomb sont les fonctions d'envoi du coordinateur.
+const controls = createKeyboardControls(view.element, {
+  onMove: (direction) => sendMove(direction),
+  onBomb: () => sendBomb(),
+});
+
+controls.setEnabled(true);
+view.focus();
+```
+
+Adapter le chemin d'import au fichier d'assemblage. Le coordinateur appelle `setEnabled(false)` lorsque les commandes doivent cesser et `destroy()` à la sortie ou à la déconnexion, avant de détruire la vue. Une nouvelle vue reçoit un nouveau module clavier. Le clavier ne connaît ni la session ni la connexion ; son activation ne remplace pas les contrôles d'envoi hors partie du transport.
 
 Critère d'acceptation : les callbacks reçoivent les bonnes intentions sans modifier localement les positions ni créer une bombe dans PixiJS. Cette partie peut être vérifiée avant que le transport de jeu et le moteur backend soient disponibles.
 
@@ -118,7 +137,7 @@ Depuis `client/` :
 npm run arena:preview
 ```
 
-Ouvrir l'adresse affichée, normalement `http://127.0.0.1:4173`. Les boutons permettent de vérifier les positions de départ, les positions actualisées, l'apparition de deux bombes et leur retrait. **Vider** efface l'affichage ; sélectionner un état l'affiche à nouveau. Aucune touche de jeu n'est implémentée dans ce lot. `Ctrl+C` arrête l'aperçu.
+Ouvrir l'adresse affichée, normalement `http://127.0.0.1:4173`. Les boutons permettent de vérifier les positions de départ, les positions actualisées, l'apparition de deux bombes et leur retrait. **Vider** efface l'affichage ; sélectionner un état l'affiche à nouveau. Le module clavier n'est pas raccordé à cet aperçu. `Ctrl+C` arrête l'aperçu.
 
 Les états sont fixes, sans simulation ni connexion réseau. Cet outil vérifie le rendu, sans constituer le mode mock complet prévu au jalon 3 ni démontrer la synchronisation entre deux clients. Le parcours `npm start` reste l'accueil du jalon 1.
 
@@ -158,7 +177,7 @@ Cet extrait décrit l'API, pas un raccordement livré. Le binôme doit organiser
 
 La vue propose `element` (canvas focalisable), `setSnapshot`, `clear`, `focus` et `destroy`. `clear` conserve les textures pour réutiliser la vue ; `destroy` libère le canvas, les images et le GPU. Elle ne décide pas quand activer les inputs et ne filtre pas les ticks.
 
-Les intentions de déplacement et de bombe doivent utiliser `CLIENT_EVENTS.MOVE` et `CLIENT_EVENTS.BOMB` et les types partagés. Les observations de partie utilisent `SERVER_EVENTS.START` et `SERVER_EVENTS.STATE`. Les noms d'événements internes au bus sont à définir par le binôme ; aucun nouveau protocole réseau n'est introduit ici. La cadence de maintien d'une touche doit être décidée avec le backend.
+Les intentions de déplacement et de bombe doivent utiliser `CLIENT_EVENTS.MOVE` et `CLIENT_EVENTS.BOMB` et les types partagés. Les observations de partie utilisent `SERVER_EVENTS.START` et `SERVER_EVENTS.STATE`. Les noms d'événements internes au bus sont à définir par le binôme ; aucun nouveau protocole réseau n'est introduit ici. Le clavier produit une intention par appui physique. Toute évolution vers un déplacement continu nécessite une décision commune avec le backend.
 
 Si l'entrée en partie exige une intention de préparation, utiliser le contrat partagé existant. Le lobby soigné, les menus finaux, explosions, bonus et résultat relèvent du jalon 3.
 
