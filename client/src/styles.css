@@ -305,6 +305,10 @@ body {
   overflow: hidden;
 }
 
+.game-arena-section[hidden] {
+  display: none;
+}
+
 .arena-topbar {
   display: flex;
   justify-content: space-between;

@@ -1,6 +1,7 @@
 import { createArenaView } from '../arena/view';
 import type { ArenaView } from '../arena/view';
 import type { StartPayload, StatePayload } from '../../../shared/index.js';
+import { createKeyboardControls } from '../inputs/keyboard';
 import type { GameControls } from '../inputs/types';
 import type { GameTransport, GameTransportObserver } from '../session/types';
 import { validateStartPayload, validateStatePayload } from './validator';
@@ -9,14 +10,39 @@ export interface GameCoordinatorOptions {
   host: HTMLElement;
   transport: GameTransport;
   playerId: () => string | undefined;
-  controlsFactory?: (handlers: {
-    onMove: (direction: Parameters<GameTransport['sendMove']>[0]) => void;
-    onBomb: () => void;
-  }) => GameControls;
+  controlsFactory?: (
+    canvasOrHandlers: HTMLCanvasElement | {
+      onMove: (direction: Parameters<GameTransport['sendMove']>[0]) => void;
+      onBomb: () => void;
+    },
+    maybeHandlers?: {
+      onMove: (direction: Parameters<GameTransport['sendMove']>[0]) => void;
+      onBomb: () => void;
+    },
+  ) => GameControls;
   viewFactory?: (host: HTMLElement, playerId: string, signal: AbortSignal) => Promise<ArenaView>;
+  onGameStart?: (payload: StartPayload) => void;
   onGameOver?: (payload: unknown) => void;
   onLobbyUpdate?: (payload: unknown) => void;
   onError?: (payload: unknown) => void;
+}
+
+function enableControls(controls: GameControls | undefined): void {
+  if (!controls) return;
+  if (typeof controls.setEnabled === 'function') {
+    controls.setEnabled(true);
+  } else if (typeof controls.enable === 'function') {
+    controls.enable();
+  }
+}
+
+function disableControls(controls: GameControls | undefined): void {
+  if (!controls) return;
+  if (typeof controls.setEnabled === 'function') {
+    controls.setEnabled(false);
+  } else if (typeof controls.disable === 'function') {
+    controls.disable();
+  }
 }
 
 export function createGameCoordinator(options: GameCoordinatorOptions) {
@@ -26,6 +52,7 @@ export function createGameCoordinator(options: GameCoordinatorOptions) {
     playerId,
     controlsFactory,
     viewFactory = createArenaView,
+    onGameStart,
     onGameOver,
     onLobbyUpdate,
     onError,
@@ -46,7 +73,7 @@ export function createGameCoordinator(options: GameCoordinatorOptions) {
       abortController = undefined;
     }
     if (controls) {
-      controls.disable();
+      disableControls(controls);
       controls.destroy();
       controls = undefined;
     }
@@ -71,7 +98,7 @@ export function createGameCoordinator(options: GameCoordinatorOptions) {
 
     onOver(payload) {
       transport.setGameActive(false);
-      controls?.disable();
+      disableControls(controls);
       onGameOver?.(payload);
     },
 
@@ -85,6 +112,8 @@ export function createGameCoordinator(options: GameCoordinatorOptions) {
       cleanupGame();
 
       pendingStart = validStart;
+      onGameStart?.(validStart);
+
       abortController = new AbortController();
       const signal = abortController.signal;
 
@@ -112,13 +141,20 @@ export function createGameCoordinator(options: GameCoordinatorOptions) {
 
           transport.setGameActive(true);
 
+          const handlers = {
+            onMove: (dir: Parameters<GameTransport['sendMove']>[0]) => transport.sendMove(dir),
+            onBomb: () => transport.sendBomb(),
+          };
+
           if (controlsFactory) {
-            controls = controlsFactory({
-              onMove: (dir) => transport.sendMove(dir),
-              onBomb: () => transport.sendBomb(),
-            });
-            controls.enable();
+            controls = controlsFactory.length <= 1
+              ? (controlsFactory as (h: typeof handlers) => GameControls)(handlers)
+              : controlsFactory(view.element, handlers);
+          } else {
+            controls = createKeyboardControls(view.element, handlers);
           }
+
+          enableControls(controls);
 
           view.focus();
         })
