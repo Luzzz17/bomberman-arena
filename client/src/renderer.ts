@@ -20,13 +20,19 @@ const leaveButton = document.querySelector<HTMLButtonElement>('#game-leave-butto
 
 let coordinator: ReturnType<typeof createGameCoordinator> | undefined;
 
-if (arenaHost) {
+function initCoordinator() {
+  if (!arenaHost) return;
+  coordinator?.dispose();
   coordinator = createGameCoordinator({
     host: arenaHost,
     transport,
     playerId: () => {
       const state = session.getState();
       return state.status === 'connected' ? state.playerId : undefined;
+    },
+    onGameStart: () => {
+      if (gameArenaSection) gameArenaSection.hidden = false;
+      if (gameInfo) gameInfo.textContent = 'Partie en cours';
     },
     onLobbyUpdate: (data) => {
       lobbyView.updateLobby(data);
@@ -43,72 +49,26 @@ if (arenaHost) {
 function handleSessionChange(state: ReturnType<typeof session.getState>) {
   if (state.status === 'connected') {
     lobbyView.setVisible(true);
-  } else {
+    initCoordinator();
+  } else if (state.status === 'disconnected' || state.status === 'error') {
     lobbyView.setVisible(false);
     if (gameArenaSection) gameArenaSection.hidden = true;
     coordinator?.dispose();
+    coordinator = undefined;
   }
 }
 
 const offSession = bus.on('session:changed', handleSessionChange);
 
-const originalOnStart = transport.connect;
-transport.connect = (address, observe) => {
-  return originalOnStart(address, (state) => {
-    observe(state);
-    if (state.status !== 'connected' && gameArenaSection) {
-      gameArenaSection.hidden = true;
-    }
-  });
-};
-
-const observerWrapper = {
-  onStart: () => {
-    if (gameArenaSection) {
-      gameArenaSection.hidden = false;
-    }
-    if (gameInfo) {
-      gameInfo.textContent = 'Partie en cours';
-    }
-  },
-};
-
-const existingSetObserver = transport.setObserver.bind(transport);
-transport.setObserver = (obs) => {
-  if (!obs) {
-    existingSetObserver(null);
-    return;
-  }
-  const prevStart = obs.onStart;
-  obs.onStart = (payload) => {
-    observerWrapper.onStart();
-    prevStart?.(payload);
-  };
-  existingSetObserver(obs);
-};
-
-if (arenaHost) {
-  coordinator = createGameCoordinator({
-    host: arenaHost,
-    transport,
-    playerId: () => {
-      const state = session.getState();
-      return state.status === 'connected' ? state.playerId : undefined;
-    },
-    onLobbyUpdate: (data) => {
-      lobbyView.updateLobby(data);
-    },
-    onGameOver: (payload) => {
-      if (gameInfo) {
-        const p = payload as { winnerId?: string | null } | undefined;
-        gameInfo.textContent = p?.winnerId ? `Victoire du joueur ${p.winnerId} !` : 'Fin de partie : Égalité !';
-      }
-    },
-  });
+if (session.getState().status === 'connected') {
+  lobbyView.setVisible(true);
+  initCoordinator();
 }
 
 function handleLeave() {
   if (gameArenaSection) gameArenaSection.hidden = true;
+  coordinator?.dispose();
+  coordinator = undefined;
   bus.emit('connection:closed', undefined);
 }
 

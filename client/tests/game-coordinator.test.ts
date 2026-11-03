@@ -160,4 +160,49 @@ describe('Coordinateur de jeu et synchronisation de l’arène', () => {
     expect(mockView.destroy).toHaveBeenCalled();
     expect(transport.setGameActive).toHaveBeenCalledWith(false);
   });
+
+  it('instancie les commandes clavier par défaut et transmet les mouvements et bombes au transport', async () => {
+    const host = document.createElement('div');
+    const { transport, holder } = createMockTransport();
+    const mockView = createMockView();
+
+    document.body.append(mockView.element);
+
+    let startedPayload: StartPayload | undefined;
+    createGameCoordinator({
+      host,
+      transport,
+      playerId: () => 'p1',
+      viewFactory: vi.fn().mockResolvedValue(mockView),
+      onGameStart: (payload) => {
+        startedPayload = payload;
+      },
+    });
+
+    const start = makeStartPayload();
+    holder.observer!.onStart!(start);
+
+    await expect.poll(() => mockView.snapshots.length).toBe(1);
+    expect(startedPayload).toEqual(start);
+    expect(transport.setGameActive).toHaveBeenCalledWith(true);
+
+    mockView.element.focus();
+
+    const moveEvent = new KeyboardEvent('keydown', { code: 'ArrowUp', bubbles: true });
+    mockView.element.dispatchEvent(moveEvent);
+    expect(transport.sendMove).toHaveBeenCalledWith('up');
+
+    const bombEvent = new KeyboardEvent('keydown', { code: 'Space', bubbles: true });
+    mockView.element.dispatchEvent(bombEvent);
+    expect(transport.sendBomb).toHaveBeenCalled();
+
+    holder.observer!.onOver!({ winnerId: 'p1' });
+    expect(transport.setGameActive).toHaveBeenCalledWith(false);
+
+    const afterOverMove = new KeyboardEvent('keydown', { code: 'ArrowDown', bubbles: true });
+    mockView.element.dispatchEvent(afterOverMove);
+    expect(transport.sendMove).not.toHaveBeenCalledWith('down');
+
+    mockView.element.remove();
+  });
 });

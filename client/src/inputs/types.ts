@@ -1,8 +1,9 @@
 import type { Direction } from '../../../shared/index.js';
 
 export interface GameControls {
-  enable(): void;
-  disable(): void;
+  enable?(): void;
+  disable?(): void;
+  setEnabled?(enabled: boolean): void;
   destroy(): void;
 }
 
