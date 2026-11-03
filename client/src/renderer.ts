@@ -11,7 +11,14 @@ const transport = createSocketTransport();
 const session = createSession(bus, transport);
 
 const unmountConnection = mountConnectionView(document, bus, session.getState());
-const lobbyView = mountLobbyView({ root: document, transport });
+const lobbyView = mountLobbyView({
+  root: document,
+  transport,
+  playerId: () => {
+    const state = session.getState();
+    return state.status === 'connected' ? state.playerId : undefined;
+  },
+});
 
 const gameArenaSection = document.querySelector<HTMLElement>('#game-arena-section');
 const arenaHost = document.querySelector<HTMLElement>('#arena-host');
@@ -36,6 +43,9 @@ function initCoordinator() {
     },
     onLobbyUpdate: (data) => {
       lobbyView.updateLobby(data);
+    },
+    onError: (data) => {
+      lobbyView.showError(data);
     },
     onGameOver: (payload) => {
       if (gameInfo) {
