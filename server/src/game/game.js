@@ -1,4 +1,5 @@
 import { DIRECTIONS } from '../../../shared/index.js';
+import { hasBomb } from './bombs.js';
 import { createGrid, isWalkable, SPAWN_POINTS } from './grid.js';
 
 /** Décalage appliqué par chaque direction. */
@@ -10,11 +11,11 @@ const STEPS = Object.freeze({
 });
 
 /**
- * Crée une partie : grille neuve et joueurs placés sur le départ de leur slot.
+ * Crée une partie : grille neuve, joueurs placés sur le départ de leur slot, aucune bombe.
  *
  * @param {{ id: string, pseudo: string, slot: number }[]} players
  * @param {() => number} [random] - Transmis à createGrid.
- * @returns {{ grid: import('../../../shared/index.js').Grid, players: import('../../../shared/index.js').GamePlayer[] }}
+ * @returns {{ grid: import('../../../shared/index.js').Grid, players: import('../../../shared/index.js').GamePlayer[], bombs: import('../../../shared/index.js').Bomb[], nextBombId: number }}
  */
 export function createGame(players, random) {
   return {
@@ -29,11 +30,13 @@ export function createGame(players, random) {
       range: 1,
       speed: 1,
     })),
+    bombs: [],
+    nextBombId: 1,
   };
 }
 
 /**
- * Avance le joueur d'une case si la direction est valide et la case libre.
+ * Avance le joueur d'une case si la direction est valide et la case libre de mur, de brique et de bombe.
  *
  * @param {ReturnType<typeof createGame>} game
  * @param {string} playerId
@@ -46,7 +49,8 @@ export function movePlayer(game, playerId, direction) {
 
   const x = player.x + STEPS[direction].x;
   const y = player.y + STEPS[direction].y;
-  if (!isWalkable(game.grid, x, y)) return false;
+  // Seule la case d'arrivée compte : on peut quitter la bombe qu'on vient de poser.
+  if (!isWalkable(game.grid, x, y) || hasBomb(game, x, y)) return false;
 
   player.x = x;
   player.y = y;
@@ -65,7 +69,8 @@ export function stateOf(game, tick) {
     tick,
     grid: game.grid,
     players: game.players,
-    bombs: [],
+    // Copies : updateBombs modifie explodesIn en place après l'envoi.
+    bombs: game.bombs.map((bomb) => ({ ...bomb })),
     explosions: [],
     bonuses: [],
   };

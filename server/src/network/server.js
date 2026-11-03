@@ -7,11 +7,15 @@ import {
   PROTOCOL_VERSION,
   SERVER_EVENTS,
 } from '../../../shared/index.js';
+import { placeBomb, updateBombs } from '../game/bombs.js';
 import { createGame, movePlayer, stateOf, winnerOf } from '../game/game.js';
 import { canStart, createLobby, joinLobby, leaveLobby, lobbyPayload, resetReady, setReady } from '../game/lobby.js';
 
 /** Room socket.io des joueurs inscrits au lobby. */
 const PLAYERS_ROOM = 'players';
+
+/** Durée d'un tick, en millisecondes. */
+const TICK_DURATION = 1000 / GAME_SETTINGS.TICK_RATE;
 
 /** Messages renvoyés avec chaque code d'erreur. */
 const ERROR_MESSAGES = Object.freeze({
@@ -49,6 +53,11 @@ export function startServer(port, { random } = {}) {
     socket.emit(SERVER_EVENTS.ERROR, { code, message });
   }
 
+  /** Vrai si le socket joue dans la partie en cours. */
+  function isInGame(socket) {
+    return Boolean(game?.players.some((player) => player.id === socket.id));
+  }
+
   function broadcastLobby() {
     io.emit(SERVER_EVENTS.LOBBY, lobbyPayload(lobby));
   }
@@ -63,10 +72,17 @@ export function startServer(port, { random } = {}) {
     tick = 0;
     movedThisTick.clear();
     io.to(PLAYERS_ROOM).emit(SERVER_EVENTS.START, { grid: game.grid, players: game.players });
+    let lastTick = performance.now();
     loop = setInterval(() => {
+      // setInterval dérive : la mèche suit le temps réel écoulé et non la durée théorique du tick.
+      const now = performance.now();
+      const elapsed = now - lastTick;
+      lastTick = now;
+
       movedThisTick.clear();
+      updateBombs(game, elapsed);
       io.to(PLAYERS_ROOM).emit(SERVER_EVENTS.STATE, stateOf(game, tick++));
-    }, 1000 / GAME_SETTINGS.TICK_RATE);
+    }, TICK_DURATION);
   }
 
   function endGameIfOver() {
@@ -114,14 +130,19 @@ export function startServer(port, { random } = {}) {
 
     socket.on(CLIENT_EVENTS.MOVE, (payload) => {
       if (!isObject(payload)) return sendError(socket, ERROR_CODES.INVALID_PAYLOAD);
-      if (!game?.players.some((player) => player.id === socket.id)) {
-        return sendError(socket, ERROR_CODES.NOT_IN_GAME);
-      }
+      if (!isInGame(socket)) return sendError(socket, ERROR_CODES.NOT_IN_GAME);
       if (!DIRECTIONS.includes(payload.direction)) return sendError(socket, ERROR_CODES.INVALID_PAYLOAD);
 
       // Un seul déplacement par tick, pour qu'un client ne traverse pas la carte en rafale.
       if (movedThisTick.has(socket.id)) return;
       if (movePlayer(game, socket.id, payload.direction)) movedThisTick.add(socket.id);
+    });
+
+    socket.on(CLIENT_EVENTS.BOMB, (payload) => {
+      if (!isObject(payload)) return sendError(socket, ERROR_CODES.INVALID_PAYLOAD);
+      if (!isInGame(socket)) return sendError(socket, ERROR_CODES.NOT_IN_GAME);
+
+      placeBomb(game, socket.id);
     });
 
     socket.on('disconnect', () => {

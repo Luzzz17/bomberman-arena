@@ -31,7 +31,7 @@ socket.emit(SERVER_EVENTS.WELCOME, { id: socket.id, protocolVersion: PROTOCOL_VE
 - **Format** : un événement par message, accompagné d'un objet JSON.
 - **Nommage** : `client:*` pour les messages du client, `server:*` pour ceux du serveur.
 - **Autorité du serveur** : le client envoie des intentions, le serveur valide chaque action, calcule l'état du jeu et le diffuse. Le client ne fait qu'afficher.
-- **Erreurs** : un message invalide ou envoyé au mauvais moment est ignoré, et le client reçoit un `server:error`.
+- **Erreurs** : un message invalide ou envoyé au mauvais moment est ignoré, et le client reçoit un `server:error`. Un message valide mais refusé par une règle de jeu (mur, case occupée, limite de bombes) est ignoré sans erreur.
 
 ## Déroulement
 
@@ -83,6 +83,9 @@ La grille est un tableau de 11 lignes de 13 cases, lue avec `grid[y][x]` : `0` v
 
 - Un seul lobby, de 2 à 4 joueurs, avec des pseudos uniques.
 - Un joueur déconnecté pendant la partie est considéré comme mort.
+- La mèche d'une bombe dure 3 secondes (`explodesIn`, en millisecondes). Pour l'instant, la bombe disparaît à la fin de la mèche, l'explosion viendra ensuite.
+- Une seule bombe par case, et au plus `maxBombs` bombes posées par joueur. Un `client:bomb` refusé est ignoré sans erreur.
+- Une bombe bloque le passage ; un joueur déjà sur la case peut seulement en sortir.
 - Une connexion pendant une partie est acceptée, mais `client:join` est refusé jusqu'au retour au lobby.
 
 ## Codes d'erreur
