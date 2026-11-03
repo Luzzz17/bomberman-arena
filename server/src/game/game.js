@@ -52,3 +52,32 @@ export function movePlayer(game, playerId, direction) {
   player.y = y;
   return true;
 }
+
+/**
+ * Contenu du message server:state.
+ *
+ * @param {ReturnType<typeof createGame>} game
+ * @param {number} tick
+ * @returns {import('../../../shared/index.js').StatePayload}
+ */
+export function stateOf(game, tick) {
+  return {
+    tick,
+    grid: game.grid,
+    players: game.players,
+    bombs: [],
+    explosions: [],
+    bonuses: [],
+  };
+}
+
+/**
+ * Indique si la partie est finie : un seul joueur vivant ou aucun.
+ *
+ * @param {ReturnType<typeof createGame>} game
+ * @returns {{ over: boolean, winnerId: string | null }}
+ */
+export function winnerOf(game) {
+  const alive = game.players.filter((player) => player.alive);
+  return { over: alive.length <= 1, winnerId: alive.length === 1 ? alive[0].id : null };
+}

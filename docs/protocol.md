@@ -35,8 +35,8 @@ socket.emit(SERVER_EVENTS.WELCOME, { id: socket.id, protocolVersion: PROTOCOL_VE
 
 ## Déroulement
 
-1. Le client se connecte au serveur, qui lui envoie `server:welcome` avec son identifiant et la version du protocole.
-2. Le client demande à rejoindre le lobby avec `client:join { pseudo }`. Le serveur diffuse alors `server:lobby` à tous les joueurs du lobby.
+1. Le client se connecte au serveur, qui lui envoie `server:welcome` avec son identifiant et la version du protocole, puis l'état actuel du lobby avec `server:lobby`.
+2. Le client demande à rejoindre le lobby avec `client:join { pseudo }`. Le serveur diffuse alors `server:lobby` à tous les clients connectés.
 3. Le client indique s'il est prêt avec `client:ready { ready }`. Le serveur diffuse le nouvel état du lobby avec `server:lobby`.
 4. Lorsque le lobby compte 2 à 4 joueurs et qu'ils sont tous prêts, le serveur démarre la partie et envoie `server:start { grid, players }`.
 5. Pendant la partie, le client envoie ses intentions avec `client:move` ou `client:bomb`. Le serveur calcule l'état du jeu et le diffuse avec `server:state` 20 fois par seconde.
@@ -57,7 +57,7 @@ socket.emit(SERVER_EVENTS.WELCOME, { id: socket.id, protocolVersion: PROTOCOL_VE
 | Message | Données | Quand |
 |---|---|---|
 | `server:welcome` | `{ id, protocolVersion }` | À la connexion |
-| `server:lobby` | `{ players, minPlayers, maxPlayers, canStart }` | À chaque changement dans le lobby |
+| `server:lobby` | `{ players, minPlayers, maxPlayers, canStart }` | À la connexion, puis à chaque changement dans le lobby, à tous les clients connectés |
 | `server:start` | `{ grid, players }` | Début de partie |
 | `server:state` | `{ tick, grid, players, bombs, explosions, bonuses }` | 20 fois par seconde pendant la partie |
 | `server:over` | `{ winnerId }` (`null` si égalité) | Fin de partie |
