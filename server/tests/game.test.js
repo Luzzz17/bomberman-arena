@@ -1,16 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { createGame, movePlayer, stateOf, winnerOf } from '../src/game/game.js';
+import { movePlayer, stateOf, winnerOf } from '../src/game/game.js';
+import { BOMB_TIMER, placeBomb } from '../src/game/bombs.js';
 import { MAP_HEIGHT, MAP_WIDTH } from '../../shared/index.js';
-
-const PLAYERS = [
-  { id: 'a', pseudo: 'Alice', slot: 1 },
-  { id: 'b', pseudo: 'Bob', slot: 4 },
-];
-
-/** Partie avec un plateau rempli de briques hors des zones de départ. */
-function fullGame() {
-  return createGame(PLAYERS, () => 0);
-}
+import { fullGame } from './helpers.js';
 
 describe('createGame', () => {
   it('place chaque joueur sur le départ de son slot', () => {
@@ -34,6 +26,10 @@ describe('createGame', () => {
       range: 1,
       speed: 1,
     });
+  });
+
+  it('démarre sans bombe', () => {
+    expect(fullGame().bombs).toEqual([]);
   });
 });
 
@@ -77,10 +73,48 @@ describe('movePlayer', () => {
     expect(movePlayer(game, 'a', 'right')).toBe(false);
     expect(game.players[0]).toMatchObject({ x: 1, y: 1 });
   });
+
+  it('refuse une case occupée par une bombe', () => {
+    const game = fullGame();
+    game.bombs.push({ id: 'x', ownerId: 'b', x: 2, y: 1, range: 1, explodesIn: BOMB_TIMER });
+
+    expect(movePlayer(game, 'a', 'right')).toBe(false);
+    expect(game.players[0]).toMatchObject({ x: 1, y: 1 });
+  });
+
+  it('laisse le joueur quitter sa bombe mais pas y revenir', () => {
+    const game = fullGame();
+    placeBomb(game, 'a');
+
+    expect(movePlayer(game, 'a', 'right')).toBe(true);
+    expect(movePlayer(game, 'a', 'left')).toBe(false);
+    expect(game.players[0]).toMatchObject({ x: 2, y: 1 });
+  });
 });
 
 describe('stateOf', () => {
-  it('produit le contenu de server:state avec des listes vides', () => {
+  it('contient les bombes posées', () => {
+    const game = fullGame();
+    placeBomb(game, 'a');
+
+    expect(stateOf(game, 1).bombs).toEqual([
+      { id: expect.any(String), ownerId: 'a', x: 1, y: 1, range: 1, explodesIn: BOMB_TIMER },
+    ]);
+  });
+
+  it('renvoie des copies des bombes', () => {
+    const game = fullGame();
+    placeBomb(game, 'a');
+
+    const state = stateOf(game, 1);
+    state.bombs[0].explodesIn = 1;
+    state.bombs.push({ id: 'faux' });
+
+    expect(game.bombs).toHaveLength(1);
+    expect(game.bombs[0].explodesIn).toBe(BOMB_TIMER);
+  });
+
+  it('produit le contenu de server:state d’une partie sans bombe', () => {
     const game = fullGame();
 
     expect(stateOf(game, 3)).toEqual({

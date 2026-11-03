@@ -2,7 +2,15 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { io as connect } from 'socket.io-client';
 import { startServer } from '../src/network/server.js';
 import { SPAWN_POINTS } from '../src/game/grid.js';
+import { BOMB_TIMER } from '../src/game/bombs.js';
 import { CLIENT_EVENTS, ERROR_CODES, MAP_HEIGHT, PROTOCOL_VERSION, SERVER_EVENTS } from '../../shared/index.js';
+
+// La mesure côté test peut décaler d'un tick ou deux ; la dérive de Windows donnait ~3700 ms.
+const FUSE_TOLERANCE = 500;
+/** Marge ajoutée à la mèche pour le délai d'attente du message. */
+const WAIT_MARGIN = 1000;
+/** Marge ajoutée au délai d'attente pour le timeout Vitest (connexion et lancement de la partie). */
+const TEST_MARGIN = 2000;
 
 /** Attend un message qui respecte la condition, avec un délai maximal. */
 function waitFor(socket, event, condition = () => true, timeout = 2000) {
@@ -126,6 +134,7 @@ describe('Serveur WebSocket', () => {
       expect(await errorAfter(client, CLIENT_EVENTS.JOIN, null)).toMatchObject({ code: ERROR_CODES.INVALID_PAYLOAD });
       expect(await errorAfter(client, CLIENT_EVENTS.READY, [true])).toMatchObject({ code: ERROR_CODES.INVALID_PAYLOAD });
       expect(await errorAfter(client, CLIENT_EVENTS.MOVE, 'right')).toMatchObject({ code: ERROR_CODES.INVALID_PAYLOAD });
+      expect(await errorAfter(client, CLIENT_EVENTS.BOMB, 'bombe')).toMatchObject({ code: ERROR_CODES.INVALID_PAYLOAD });
     });
 
     it('refuse « prêt » sans avoir rejoint le lobby', async () => {
@@ -201,6 +210,72 @@ describe('Serveur WebSocket', () => {
 
       expect(await errorAfter(client, CLIENT_EVENTS.MOVE, { direction: 'right' }))
         .toMatchObject({ code: ERROR_CODES.NOT_IN_GAME });
+    });
+
+    it('refuse une bombe d’un client qui n’est pas dans la partie', async () => {
+      const { client } = await connectClient();
+      expect(await errorAfter(client, CLIENT_EVENTS.BOMB, {}))
+        .toMatchObject({ code: ERROR_CODES.NOT_IN_GAME });
+
+      await startGame(['Alice', 'Bob']);
+
+      expect(await errorAfter(client, CLIENT_EVENTS.BOMB, {}))
+        .toMatchObject({ code: ERROR_CODES.NOT_IN_GAME });
+    });
+
+    it('refuse un message de bombe qui n’est pas un objet', async () => {
+      const { players: [a] } = await startGame(['Alice', 'Bob']);
+
+      expect(await errorAfter(a, CLIENT_EVENTS.BOMB, null)).toMatchObject({ code: ERROR_CODES.INVALID_PAYLOAD });
+      expect(await errorAfter(a, CLIENT_EVENTS.BOMB, [])).toMatchObject({ code: ERROR_CODES.INVALID_PAYLOAD });
+    });
+
+    it('montre à B la bombe posée par A', async () => {
+      const { players: [a, b] } = await startGame(['Alice', 'Bob']);
+
+      a.emit(CLIENT_EVENTS.BOMB, {});
+      const state = await waitFor(b, SERVER_EVENTS.STATE, (payload) => payload.bombs.length > 0);
+
+      expect(state.bombs).toEqual([
+        {
+          id: expect.any(String),
+          ownerId: a.id,
+          ...SPAWN_POINTS[0],
+          range: 1,
+          explodesIn: expect.any(Number),
+        },
+      ]);
+      // Le tick qui émet l'état a déjà décrémenté la mèche.
+      expect(state.bombs[0].explodesIn).toBeGreaterThan(0);
+      expect(state.bombs[0].explodesIn).toBeLessThan(BOMB_TIMER);
+    });
+
+    it('fait disparaître la bombe après environ BOMB_TIMER', async () => {
+      const { players: [a, b] } = await startGame(['Alice', 'Bob']);
+
+      a.emit(CLIENT_EVENTS.BOMB, {});
+      await waitFor(b, SERVER_EVENTS.STATE, (payload) => payload.bombs.length > 0);
+      const seenAt = performance.now();
+
+      await waitFor(b, SERVER_EVENTS.STATE, (payload) => payload.bombs.length === 0, BOMB_TIMER + WAIT_MARGIN);
+      const elapsed = performance.now() - seenAt;
+
+      expect(elapsed).toBeGreaterThanOrEqual(BOMB_TIMER - FUSE_TOLERANCE);
+      expect(elapsed).toBeLessThanOrEqual(BOMB_TIMER + FUSE_TOLERANCE);
+    }, BOMB_TIMER + WAIT_MARGIN + TEST_MARGIN);
+
+    it('ignore sans erreur une bombe posée sur une case occupée', async () => {
+      const { players: [a, b] } = await startGame(['Alice', 'Bob']);
+      const errors = [];
+      a.on(SERVER_EVENTS.ERROR, (error) => errors.push(error));
+
+      a.emit(CLIENT_EVENTS.BOMB, {});
+      a.emit(CLIENT_EVENTS.BOMB, {});
+      await waitFor(b, SERVER_EVENTS.STATE, (payload) => payload.bombs.length > 0);
+      const state = await waitFor(b, SERVER_EVENTS.STATE);
+
+      expect(state.bombs).toHaveLength(1);
+      expect(errors).toEqual([]);
     });
 
     it('refuse une direction invalide', async () => {
