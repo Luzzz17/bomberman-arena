@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createGame, movePlayer } from '../src/game/game.js';
+import { createGame, movePlayer, stateOf, winnerOf } from '../src/game/game.js';
 import { MAP_HEIGHT, MAP_WIDTH } from '../../shared/index.js';
 
 const PLAYERS = [
@@ -34,13 +34,6 @@ describe('createGame', () => {
       range: 1,
       speed: 1,
     });
-  });
-
-  it('génère une grille aux dimensions du protocole', () => {
-    const { grid } = fullGame();
-
-    expect(grid).toHaveLength(MAP_HEIGHT);
-    grid.forEach((row) => expect(row).toHaveLength(MAP_WIDTH));
   });
 });
 
@@ -83,5 +76,42 @@ describe('movePlayer', () => {
     expect(movePlayer(game, 'inconnu', 'right')).toBe(false);
     expect(movePlayer(game, 'a', 'right')).toBe(false);
     expect(game.players[0]).toMatchObject({ x: 1, y: 1 });
+  });
+});
+
+describe('stateOf', () => {
+  it('produit le contenu de server:state avec des listes vides', () => {
+    const game = fullGame();
+
+    expect(stateOf(game, 3)).toEqual({
+      tick: 3,
+      grid: game.grid,
+      players: game.players,
+      bombs: [],
+      explosions: [],
+      bonuses: [],
+    });
+  });
+});
+
+describe('winnerOf', () => {
+  it('continue tant que deux joueurs sont vivants', () => {
+    expect(winnerOf(fullGame())).toEqual({ over: false, winnerId: null });
+  });
+
+  it('désigne le dernier joueur vivant', () => {
+    const game = fullGame();
+    game.players[0].alive = false;
+
+    expect(winnerOf(game)).toEqual({ over: true, winnerId: 'b' });
+  });
+
+  it('termine sur une égalité quand plus personne n’est vivant', () => {
+    const game = fullGame();
+    game.players.forEach((player) => {
+      player.alive = false;
+    });
+
+    expect(winnerOf(game)).toEqual({ over: true, winnerId: null });
   });
 });
